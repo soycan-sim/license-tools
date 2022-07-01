@@ -88,7 +88,7 @@ fn try_paths_from_str_windows(s: &OsStr) -> Result<Paths, ParsePathError> {
 pub fn try_paths_from_str_unix(s: &OsStr) -> Result<Paths, ParsePathError> {
     let result = s
         .as_bytes()
-        .split(b',')
+        .split(|byte| byte == b',')
         .map(|path| {
             if path.is_empty() {
                 Err(ParsePathError)
