@@ -1,4 +1,6 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+#[cfg(windows)]
+use std::ffi::OsString;
 use std::fmt::{self, Display};
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
@@ -88,7 +90,7 @@ fn try_paths_from_str_windows(s: &OsStr) -> Result<Paths, ParsePathError> {
 pub fn try_paths_from_str_unix(s: &OsStr) -> Result<Paths, ParsePathError> {
     let result = s
         .as_bytes()
-        .split(|byte| byte == b',')
+        .split(|byte| *byte == b',')
         .map(|path| {
             if path.is_empty() {
                 Err(ParsePathError)
