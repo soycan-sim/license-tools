@@ -2,5 +2,12 @@
 name = "license-tools"
 version = "0.0.1"
 edition = "2021"
+description = "Command line tools for generating and dealing with software licenses"
 
 [dependencies]
+clap = { version = "3.2.8", features = ["derive", "cargo", "wrap_help", "unicode"] }
+git2 = "0.14.4"
+quick-xml = "0.23.0"
+spdx = "0.8.1"
+thiserror = "1.0.31"
+time = { version = "0.3.11", features = ["local-offset"] }
