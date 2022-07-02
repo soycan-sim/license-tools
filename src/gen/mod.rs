@@ -1,11 +1,13 @@
 use clap::Args;
+use quick_xml::Reader;
 use spdx::{Expression, ParseMode};
 use time::OffsetDateTime;
+use tokio::fs::File;
 use tokio::io::{self, AsyncWriteExt};
 
 use self::format::Format;
 
-use crate::paths::Paths;
+use crate::paths::{Paths, DEFAULT_LICENSE};
 
 mod format;
 
@@ -50,28 +52,80 @@ pub async fn generate(config: Config) -> anyhow::Result<()> {
     let license = Expression::parse_mode(&config.license, ParseMode::LAX)?;
     let version = format!("v{}", spdx::license_version());
 
-    let mut buffer = Vec::new();
+    let license_count = license
+        .requirements()
+        .filter_map(|req| req.req.license.id())
+        .count();
 
-    for req in license.requirements() {
-        let req = &req.req;
+    let mut config = config;
 
-        if let Some(id) = req.license.id() {
-            let name = id.name;
-            let content = repo
-                .get_content()
-                .path(format!("src/{name}.xml"))
-                .r#ref(&version)
-                .send()
-                .await?;
-            if let Some(content) = &content.items[0].content {
-                buffer.clear();
+    if config.out.len() != license_count {
+        if config.out.len() == 1 {
+            // unwrap is fine because we checked that len is 1
+            let base = config.out.take().unwrap();
+            let dir = base.parent().unwrap_or_else(|| ".".as_ref());
+            let filename = base.file_stem().unwrap_or_else(|| DEFAULT_LICENSE.as_ref());
+            let ext = base.extension();
 
-                for line in content.lines() {
-                    base64::decode_config_buf(line, base64::STANDARD, &mut buffer)?;
+            for id in license
+                .requirements()
+                .filter_map(|req| req.req.license.id())
+            {
+                let name = id.name;
+
+                // spdx license ids use kebab case, we're gonna use this to generate unique-ish file names
+                let uniq = name
+                    .split_once('-')
+                    .map(|(name, _)| name)
+                    .unwrap_or(name)
+                    .to_uppercase();
+
+                let mut path = dir.to_path_buf();
+                let mut filename = filename.to_os_string();
+                filename.push("-");
+                filename.push(&uniq);
+                path.push(filename);
+                if let Some(ext) = ext {
+                    path.set_extension(ext);
                 }
 
-                io::stdout().write_all(&buffer).await?;
+                config.out.push(path);
             }
+        } else {
+            anyhow::bail!("when generating multiple licenses, the number of OUT-paths must be either 1 or match the number of licenses");
+        }
+    }
+
+    let config = config;
+
+    let mut buffer = Vec::new();
+
+    for (id, out) in license
+        .requirements()
+        .filter_map(|req| req.req.license.id())
+        .zip(config.out.paths())
+    {
+        let name = id.name;
+        let content = repo
+            .get_content()
+            .path(format!("src/{name}.xml"))
+            .r#ref(&version)
+            .send()
+            .await?;
+        if let Some(content) = &content.items[0].content {
+            buffer.clear();
+
+            for line in content.lines() {
+                base64::decode_config_buf(line, base64::STANDARD, &mut buffer)?;
+            }
+
+            let mut xml = Reader::from_bytes(&buffer);
+            xml.trim_text(true);
+
+            let mut file = File::create(out).await?;
+            config.format.write(xml, &mut file, &config).await?;
+        } else {
+            anyhow::bail!("no contents found in license data '{name}'");
         }
     }
 

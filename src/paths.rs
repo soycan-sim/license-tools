@@ -10,12 +10,31 @@ use std::path::PathBuf;
 
 use crate::error::ParsePathError;
 
+pub const DEFAULT_LICENSE: &str = "LICENSE";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Paths {
     paths: Vec<PathBuf>,
 }
 
 impl Paths {
+    pub fn take(&mut self) -> Option<PathBuf> {
+        if self.paths.len() == 1 {
+            self.paths.pop()
+        } else {
+            None
+        }
+    }
+
+    pub fn push(&mut self, path: PathBuf) {
+        self.paths.push(path);
+    }
+
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.paths.len()
+    }
+
     pub fn paths(&self) -> &[PathBuf] {
         &self.paths
     }
@@ -24,7 +43,7 @@ impl Paths {
 impl Default for Paths {
     fn default() -> Self {
         Paths {
-            paths: vec!["LICENSE".into()],
+            paths: vec![DEFAULT_LICENSE.into()],
         }
     }
 }
