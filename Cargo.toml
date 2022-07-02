@@ -5,9 +5,13 @@ edition = "2021"
 description = "Command line tools for generating and dealing with software licenses"
 
 [dependencies]
+anyhow = { version = "1.0.58", features = ["backtrace"] }
+base64 = "0.13.0"
 clap = { version = "3.2.8", features = ["derive", "cargo", "wrap_help", "unicode"] }
 git2 = "0.14.4"
+octocrab = "0.16.0"
 quick-xml = "0.23.0"
 spdx = "0.8.1"
 thiserror = "1.0.31"
 time = { version = "0.3.11", features = ["local-offset"] }
+tokio = { version = "1.19.2", features = ["full"] }
