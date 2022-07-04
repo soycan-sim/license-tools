@@ -3,7 +3,6 @@ use quick_xml::Reader;
 use spdx::{Expression, ParseMode};
 use time::OffsetDateTime;
 use tokio::fs::File;
-use tokio::io::{self, AsyncWriteExt};
 
 use self::format::Format;
 
